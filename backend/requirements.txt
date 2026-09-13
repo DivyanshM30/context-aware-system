@@ -6,3 +6,4 @@ opencv-python
 pillow
 numpy
 python-dotenv
+google-genai>=2.3.0
