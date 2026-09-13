@@ -3,9 +3,10 @@ import uuid
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 
-from models.schemas import OCRResponse, ContextRequest, ContextResponse
+from models.schemas import OCRResponse, ContextRequest, ContextResponse, ExplainResponse
 from services.ocr_service import OCRService
 from services.context import find_context
+from services.explain import generate_explanation
 
 app = FastAPI(
     title="Tap2Explain Backend",
@@ -89,4 +90,45 @@ def get_context(request: ContextRequest):
         "selected_text": selected["text"],
         "bbox": selected["bbox"],
         "context": context,
+    }
+
+
+@app.post("/api/explain", response_model=ExplainResponse)
+def explain_context(request: ContextRequest):
+    possible_files = [
+        os.path.join(UPLOAD_DIR, request.image_id + ".jpg"),
+        os.path.join(UPLOAD_DIR, request.image_id + ".png"),
+    ]
+
+    image_path = next(
+        (path for path in possible_files if os.path.exists(path)),
+        None,
+    )
+
+    if image_path is None:
+        raise HTTPException(status_code=404, detail="Image not found.")
+
+    ocr_results = ocr_service.extract_text(image_path)
+
+    selected, context = find_context(
+        ocr_results,
+        request.x,
+        request.y,
+    )
+
+    if selected is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No text found near the selected location.",
+        )
+
+    explanation = generate_explanation(
+        selected_text=selected["text"],
+        context=context,
+    )
+
+    return {
+        "selected_text": selected["text"],
+        "context": context,
+        "explanation": explanation,
     }

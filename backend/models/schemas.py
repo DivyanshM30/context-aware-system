@@ -23,3 +23,9 @@ class ContextResponse(BaseModel):
     selected_text: str | None
     bbox: List[List[int]] | None
     context: List[OCRItem]
+
+
+class ExplainResponse(BaseModel):
+    selected_text: str
+    context: List[OCRItem]
+    explanation: str
